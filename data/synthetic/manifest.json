@@ -1,0 +1,262 @@
+[
+  {
+    "image": "document_01.png",
+    "points": [
+      [
+        138.0,
+        64.0
+      ],
+      [
+        736.0,
+        47.0
+      ],
+      [
+        813.0,
+        608.0
+      ],
+      [
+        59.0,
+        643.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": false
+  },
+  {
+    "image": "document_02.png",
+    "points": [
+      [
+        127.0,
+        73.0
+      ],
+      [
+        777.0,
+        55.0
+      ],
+      [
+        830.0,
+        631.0
+      ],
+      [
+        91.0,
+        634.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": false
+  },
+  {
+    "image": "document_03.png",
+    "points": [
+      [
+        138.0,
+        88.0
+      ],
+      [
+        740.0,
+        30.0
+      ],
+      [
+        803.0,
+        634.0
+      ],
+      [
+        92.0,
+        671.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": false
+  },
+  {
+    "image": "document_04.png",
+    "points": [
+      [
+        109.0,
+        87.0
+      ],
+      [
+        765.0,
+        53.0
+      ],
+      [
+        801.0,
+        611.0
+      ],
+      [
+        87.0,
+        667.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": true,
+    "brightness_changed": false
+  },
+  {
+    "image": "document_05.png",
+    "points": [
+      [
+        128.0,
+        77.0
+      ],
+      [
+        758.0,
+        32.0
+      ],
+      [
+        803.0,
+        599.0
+      ],
+      [
+        62.0,
+        636.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": true
+  },
+  {
+    "image": "document_06.png",
+    "points": [
+      [
+        138.0,
+        81.0
+      ],
+      [
+        739.0,
+        36.0
+      ],
+      [
+        808.0,
+        618.0
+      ],
+      [
+        97.0,
+        625.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": false
+  },
+  {
+    "image": "document_07.png",
+    "points": [
+      [
+        118.0,
+        77.0
+      ],
+      [
+        785.0,
+        33.0
+      ],
+      [
+        803.0,
+        594.0
+      ],
+      [
+        79.0,
+        655.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": false
+  },
+  {
+    "image": "document_08.png",
+    "points": [
+      [
+        111.0,
+        77.0
+      ],
+      [
+        768.0,
+        30.0
+      ],
+      [
+        844.0,
+        595.0
+      ],
+      [
+        102.0,
+        669.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": true,
+    "brightness_changed": false
+  },
+  {
+    "image": "document_09.png",
+    "points": [
+      [
+        143.0,
+        95.0
+      ],
+      [
+        761.0,
+        45.0
+      ],
+      [
+        805.0,
+        602.0
+      ],
+      [
+        78.0,
+        673.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": true
+  },
+  {
+    "image": "document_10.png",
+    "points": [
+      [
+        135.0,
+        83.0
+      ],
+      [
+        765.0,
+        37.0
+      ],
+      [
+        816.0,
+        630.0
+      ],
+      [
+        55.0,
+        641.0
+      ]
+    ],
+    "output_width": 700,
+    "output_height": 500,
+    "type": "synthetic",
+    "blur": false,
+    "brightness_changed": false
+  }
+]

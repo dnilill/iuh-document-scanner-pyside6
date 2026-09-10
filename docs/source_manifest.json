@@ -1,0 +1,28 @@
+{
+  "Phần_Resize_Rotate.ipynb": {
+    "sha256": "a1307a4e1f7c091e05cb7400f42fb56275cb7a8d064f076b80d35eeb61027dbc",
+    "cells_zero_based": {
+      "resize_image": 10,
+      "rotate_image": 12,
+      "evaluate_resize": 14
+    },
+    "reference": "tests\\reference\\resize_rotate.py"
+  },
+  "Perspective_Transform_Project2026_ChuDe4.ipynb": {
+    "sha256": "391f5af2411815a5d5b0811e2df4f93acbe97c4820ff72ccc1ae109940db2a9d",
+    "cells_zero_based": {
+      "order_points": 7,
+      "compute_output_size": 9,
+      "perspective_transform": 11,
+      "polygon_area": 21,
+      "laplacian_variance": 21,
+      "reprojection_error": 24,
+      "make_synthetic_document": 26,
+      "mse": 27,
+      "psnr": 27,
+      "ssim_global": 27,
+      "scan_perspective": 38
+    },
+    "reference": "tests\\reference\\perspective.py"
+  }
+}
