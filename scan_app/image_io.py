@@ -2,7 +2,7 @@
 from pathlib import Path
 import cv2
 import numpy as np
-from .algorithms import validate_image
+from .processing import validate_image
 
 
 def read_image(path):

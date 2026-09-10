@@ -6,18 +6,18 @@
 
 | Nguồn | Cell | Hàm/khối được tái sử dụng | Nơi chuyển sang |
 |---|---:|---|---|
-| Phần_Resize_Rotate.ipynb | 10 | INTERPOLATIONS, resize_image | scan_app/algorithms.py |
-| Phần_Resize_Rotate.ipynb | 12 | rotate_image | scan_app/algorithms.py |
-| Phần_Resize_Rotate.ipynb | 14 | evaluate_resize | scan_app/algorithms.py |
+| Phần_Resize_Rotate.ipynb | 10 | INTERPOLATIONS, resize_image | scan_app/processing/resize.py |
+| Phần_Resize_Rotate.ipynb | 12 | rotate_image | scan_app/processing/rotate.py |
+| Phần_Resize_Rotate.ipynb | 14 | evaluate_resize | scan_app/processing/resize.py |
 | Phần_Resize_Rotate.ipynb | 16 | Tham số, chạy, so sánh, lưu | scan_app/window.py (thay ipywidgets bằng Qt) |
 | Phần_Resize_Rotate.ipynb | 19–20 | Chạy resize/rotate trên nhiều ảnh | scripts/generate_demo.py |
-| Perspective_Transform_Project2026_ChuDe4.ipynb | 7, 9, 11 | order_points, compute_output_size, perspective_transform | scan_app/algorithms.py |
+| Perspective_Transform_Project2026_ChuDe4.ipynb | 7, 9, 11 | order_points, compute_output_size, perspective_transform | scan_app/processing/perspective.py (metric chung ở __init__.py) |
 | Perspective_Transform_Project2026_ChuDe4.ipynb | 13 | Vẽ polygon và điểm | scan_app/canvas.py (overlay Qt để kéo điểm) |
-| Perspective_Transform_Project2026_ChuDe4.ipynb | 21, 24 | polygon_area, laplacian_variance, reprojection_error | scan_app/algorithms.py |
+| Perspective_Transform_Project2026_ChuDe4.ipynb | 21, 24 | polygon_area, laplacian_variance, reprojection_error | scan_app/processing/perspective.py (metric chung ở __init__.py) |
 | Perspective_Transform_Project2026_ChuDe4.ipynb | 26 | make_synthetic_document | tests/reference/perspective.py, được gọi từ script demo |
-| Perspective_Transform_Project2026_ChuDe4.ipynb | 27 | mse, psnr, ssim_global | scan_app/algorithms.py |
+| Perspective_Transform_Project2026_ChuDe4.ipynb | 27 | mse, psnr, ssim_global | scan_app/processing/perspective.py (metric chung ở __init__.py) |
 | Perspective_Transform_Project2026_ChuDe4.ipynb | 30, 34 | So sánh nội suy và batch | scripts/generate_demo.py; dùng bốn góc riêng mỗi ảnh |
-| Perspective_Transform_Project2026_ChuDe4.ipynb | 36, 38 | UI tham số và scan_perspective | scan_app/window.py, scan_app/algorithms.py |
+| Perspective_Transform_Project2026_ChuDe4.ipynb | 36, 38 | UI tham số và scan_perspective | scan_app/window.py, scan_app/processing/perspective.py (metric chung ở __init__.py) |
 
 Giữ nguyên các bước tính chính: `cv2.resize`; `getRotationMatrix2D` + dịch tâm + `warpAffine`; sắp xếp góc + đo cạnh + `getPerspectiveTransform` + `warpPerspective`. Không thêm phát hiện góc tự động, segmentation hoặc implementation warp khác.
 
@@ -49,3 +49,22 @@ Giữ nguyên các bước tính chính: `cv2.resize`; `getRotationMatrix2D` + d
 ## Xác minh nguồn
 
 `source_manifest.json` lưu SHA-256 và cell cho từng hàm. Các file trong `tests/reference/` chỉ trích khai báo hàm và hằng số, không chạy các cell tải dữ liệu/UI. Chúng là baseline bất biến cho kiểm thử; không được dùng làm phiên bản production chưa kiểm tra đầu vào.
+
+## Refactor source và UI ngày 10/09/2026
+
+- Tách `algorithms.py` thành `processing/resize.py`, `rotate.py`, `perspective.py`; hằng số, validation và metric dùng chung ở `processing/__init__.py`. Giữ nguyên thân tất cả hàm thuật toán, không thêm tầng service/controller. Cập nhật import trong GUI, canvas, I/O, test và script demo.
+- Chuyển dữ liệu mô phỏng từ `data/synthetic/` sang `samples/synthetic/`; giữ nguyên ảnh, manifest và số liệu đã có.
+- Giữ tab Resize/Rotate/Perspective, chỉ hiện tham số đúng chế độ; tăng vùng Before/After, cân bằng hai canvas. Thanh tóm tắt luôn mô tả kết quả đang hiển thị, kể cả khi chuyển tab. Metric chi tiết mặc định thu gọn, chỉ hiển thị ba thông số phù hợp; JSON vẫn đầy đủ.
+- Resize đồng bộ hai chiều theo tỷ lệ ảnh hiện tại, chặn signal lặp khi cập nhật ô; chỉ truyền chiều vừa chỉnh vào thuật toán khi khóa tỷ lệ để tránh làm tròn hai lần. Không thay API hộp giới hạn của thuật toán.
+- Perspective giữ polygon, click/drag và nhập tọa độ; báo ngay số điểm còn thiếu hoặc tứ giác không hợp lệ. Worker vẫn bắt lỗi và vô hiệu hóa lưu kết quả cũ sau khi xử lý lỗi.
+- Giữ Open Image/Video, Save Result, Reset, ghép bước và xuất JSON; giữ BGR/RGB và I/O Unicode.
+- Lần refactor này không tìm thấy PDF gốc trong workspace/thư mục IUH; đối chiếu theo yêu cầu người dùng và phần đề đã ghi lại ở đầu tài liệu này.
+
+### Danh sách file thay đổi trong lần refactor
+
+- Thay `scan_app/algorithms.py` bằng `scan_app/processing/__init__.py`, `scan_app/processing/resize.py`, `scan_app/processing/rotate.py`, `scan_app/processing/perspective.py`.
+- Sửa `scan_app/window.py`; cập nhật import trong `scan_app/canvas.py`, `scan_app/image_io.py`.
+- Cập nhật `tests/test_algorithms.py`, `tests/test_gui.py`, `scripts/generate_demo.py`.
+- Cập nhật `README.md`, `docs/REVIEW_GUIDE.md`, `docs/THAY_DOI.md`, `docs/KIEM_THU.md`, `docs/gui-preview.png`.
+- Chuyển nguyên 23 file từ `data/synthetic/` sang `samples/synthetic/`: `document_01.png`–`document_10.png`, `restored_01.png`–`restored_10.png`, `ground_truth.png`, `manifest.json`, `evaluation.csv`.
+- `main.py`, requirements và các hàm baseline trong `tests/reference/` không cần sửa.

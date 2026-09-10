@@ -59,7 +59,7 @@ class ImageCanvas(QGraphicsView):
         pen = QPen(QColor('#009f89'), 2)
         pen.setCosmetic(True)
         if len(self.points) == 4:
-            from .algorithms import order_points
+            from .processing.perspective import order_points
             try:
                 polygon_points = order_points(self.points)
             except ValueError:

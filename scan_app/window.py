@@ -4,14 +4,19 @@ import time
 from pathlib import Path
 import cv2
 import numpy as np
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import QThread, Signal, QSignalBlocker
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFileDialog, QMessageBox, QTabWidget, QFormLayout, QSpinBox,
     QDoubleSpinBox, QCheckBox, QComboBox, QSplitter, QTableWidget,
     QTableWidgetItem, QHeaderView, QScrollArea, QGroupBox,
 )
-from . import algorithms as alg
+from .processing import (
+    validate_image, laplacian_variance, INTERPOLATIONS, PERSPECTIVE_INTERPOLATIONS, BORDER_MODES,
+)
+from .processing.resize import resize_image, evaluate_resize
+from .processing.rotate import rotate_image
+from .processing.perspective import order_points, scan_perspective
 from .canvas import ImageCanvas
 from .image_io import read_image, write_image
 
@@ -58,25 +63,25 @@ class TransformWorker(QThread):
         try:
             start = time.perf_counter()
             if self.operation == 'Resize':
-                result = alg.resize_image(self.image, **self.params)
+                result = resize_image(self.image, **self.params)
                 elapsed = (time.perf_counter()-start)*1000
-                info = alg.evaluate_resize(self.image, result)
+                info = evaluate_resize(self.image, result)
                 info['Ghi chú'] = 'Resize rồi hồi kích thước bằng Linear; không phải ground-truth độc lập.'
             elif self.operation == 'Rotate':
-                result = alg.rotate_image(self.image, **self.params)
+                result = rotate_image(self.image, **self.params)
                 elapsed = (time.perf_counter()-start)*1000
                 info = {'Góc (độ, dương = ngược kim đồng hồ)': self.params['angle'],
                         'Scale xoay': self.params['scale'], 'Giữ toàn bộ': self.params['keep_full']}
             else:
-                result, info = alg.scan_perspective(self.image, **self.params)
+                result, info = scan_perspective(self.image, **self.params)
                 elapsed = (time.perf_counter()-start)*1000
                 info['Ghi chú'] = 'Reprojection kiểm tra ánh xạ 4 góc; không đánh giá độ đúng khi chọn góc.'
             info.update({'Phép biến đổi': self.operation,
                          'Đầu vào (W×H)': f'{self.image.shape[1]}×{self.image.shape[0]}',
                          'Đầu ra (W×H)': f'{result.shape[1]}×{result.shape[0]}',
                          'Thời gian biến đổi và kiểm tra (ms)': elapsed,
-                         'Laplacian trước': alg.laplacian_variance(self.image),
-                         'Laplacian sau': alg.laplacian_variance(result),
+                         'Laplacian trước': laplacian_variance(self.image),
+                         'Laplacian sau': laplacian_variance(result),
                          'Tỷ lệ W/H đầu ra': result.shape[1]/result.shape[0],
                          'Tham số': self.params})
             self.result_ready.emit(result, info)
@@ -88,7 +93,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Scan tài liệu • Chủ đề 4 | Project 2026')
-        self.resize(1360, 900)
+        self.resize(1280, 800)
         self.original = self.current = self.result = None
         self.worker = None
         self.info = {}
@@ -114,7 +119,6 @@ class MainWindow(QMainWindow):
         heading = QLabel('SCAN TÀI LIỆU')
         heading.setStyleSheet('font-size: 24px; font-weight: 700; color: #006b5b;')
         layout.addWidget(heading)
-        layout.addWidget(QLabel('Chủ đề 4 · Rotate / Resize / Perspective Transform · Thuật toán từ notebook của nhóm'))
         toolbar = QHBoxLayout()
         self.open_button = self.button('Mở ảnh', self.open_image, toolbar)
         self.video_button = self.button('Mở video', self.open_video, toolbar)
@@ -146,42 +150,60 @@ class MainWindow(QMainWindow):
         self.apply_button = self.button('Áp dụng phép biến đổi', self.apply_transform, controls_layout)
         self.apply_button.setObjectName('primary')
         self.commit_button = self.button('Dùng kết quả làm đầu vào tiếp', self.commit_result, controls_layout)
-        hint = QLabel('Mỗi lần Áp dụng dùng ảnh đầu vào bên trái.\nDùng kết quả làm đầu vào tiếp để ghép nhiều bước.\nLưu ảnh sẽ lưu kết quả lần chạy gần nhất.')
+        hint = QLabel('Áp dụng dùng ảnh Before.\nDùng kết quả làm đầu vào tiếp để ghép bước.')
         hint.setWordWrap(True)
         controls_layout.addWidget(hint)
         controls_layout.addStretch()
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(self.controls)
-        scroll.setMinimumWidth(370)
+        scroll.setMinimumWidth(380)
         split.addWidget(scroll)
         right = QWidget()
         right_layout = QVBoxLayout(right)
         images = QSplitter()
+        images.setChildrenCollapsible(False)
         self.before = ImageCanvas()
         self.after = ImageCanvas()
-        for title, canvas in [('TRƯỚC · Ảnh đầu vào', self.before), ('SAU · Kết quả', self.after)]:
+        for title, canvas in [('BEFORE · Ảnh đầu vào', self.before), ('AFTER · Kết quả', self.after)]:
             box = QGroupBox(title)
             box_layout = QVBoxLayout(box)
             box_layout.addWidget(canvas)
             images.addWidget(box)
-        right_layout.addWidget(images, 3)
+        images.setSizes([450, 450])
+        right_layout.addWidget(images, 1)
         self.point_status = QLabel('Mở ảnh để bắt đầu. Có thể kéo đường chia để mở rộng vùng xem.')
         self.point_status.setWordWrap(True)
         right_layout.addWidget(self.point_status)
-        right_layout.addWidget(QLabel('ĐÁNH GIÁ KẾT QUẢ · Laplacian là chỉ báo sắc nét tham khảo.'))
+        self.summary = QLabel()
+        self.summary.setWordWrap(True)
+        self.summary.setStyleSheet('background: #e4f4ef; padding: 10px; border-radius: 5px;')
+        right_layout.addWidget(self.summary)
+        self.details_toggle = QCheckBox('Chi tiết đánh giá')
+        right_layout.addWidget(self.details_toggle)
+        self.evaluation_note = QLabel()
+        self.evaluation_note.setWordWrap(True)
+        right_layout.addWidget(self.evaluation_note)
         self.metrics = QTableWidget(0, 2)
         self.metrics.setHorizontalHeaderLabels(['Thông số', 'Giá trị'])
         self.metrics.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.metrics.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.metrics.setMinimumHeight(170)
-        right_layout.addWidget(self.metrics, 1)
+        self.metrics.verticalHeader().hide()
+        self.metrics.setFixedHeight(130)
+        right_layout.addWidget(self.metrics)
+        self.details_toggle.toggled.connect(self.update_details)
+        self.update_details()
         split.addWidget(right)
-        split.setSizes([390, 970])
+        split.setSizes([380, 900])
+        split.setStretchFactor(0, 0)
+        split.setStretchFactor(1, 1)
+        split.setChildrenCollapsible(False)
         self.tabs.currentChanged.connect(self.mode_changed)
         self.before.points_changed.connect(self.sync_points)
         self.statusBar().showMessage('Sẵn sàng · Mở ảnh hoặc chọn một khung hình video')
         self.set_busy(False)
+        self.mode_changed()
+        self.update_summary('Mở ảnh để bắt đầu')
 
     def button(self, text, callback, layout):
         button = QPushButton(text)
@@ -198,34 +220,57 @@ class MainWindow(QMainWindow):
 
     def build_resize(self):
         form = self.tab_form('Resize')
+        self.resize_form = form
+        self.resize_axis = 'width'
+        self.resize_target = 800
         self.resize_mode = combo(['Theo scale', 'Theo kích thước'])
         self.resize_scale = spin(1, .01, 10, True)
-        self.resize_width = spin(800, 1, 24000)
-        self.resize_height = spin(600, 1, 24000)
-        self.keep_ratio = QCheckBox('Giữ tỷ lệ trong hộp W × H')
+        self.resize_width = spin(800, 1, 24_000_000)
+        self.resize_height = spin(600, 1, 24_000_000)
+        self.keep_ratio = QCheckBox('Keep Aspect Ratio · Giữ tỷ lệ')
         self.keep_ratio.setChecked(True)
-        self.resize_interp = combo(alg.INTERPOLATIONS)
+        self.resize_interp = combo(INTERPOLATIONS)
         for name, widget in [('Chế độ', self.resize_mode), ('Scale', self.resize_scale),
                 ('Rộng (px)', self.resize_width), ('Cao (px)', self.resize_height),
                 ('', self.keep_ratio), ('Nội suy', self.resize_interp)]:
             form.addRow(name, widget)
         self.resize_mode.currentIndexChanged.connect(self.resize_mode_changed)
+        self.resize_width.valueChanged.connect(lambda: self.sync_resize_size('width'))
+        self.resize_height.valueChanged.connect(lambda: self.sync_resize_size('height'))
+        self.keep_ratio.toggled.connect(lambda: self.sync_resize_size(self.resize_axis))
         self.resize_mode_changed()
 
     def resize_mode_changed(self):
         scaled = self.resize_mode.currentIndex() == 0
-        self.resize_scale.setEnabled(scaled)
+        self.resize_form.setRowVisible(self.resize_scale, scaled)
         for widget in (self.resize_width, self.resize_height, self.keep_ratio):
-            widget.setEnabled(not scaled)
+            self.resize_form.setRowVisible(widget, not scaled)
+        self.fit_controls()
+
+    def fit_controls(self):
+        page = self.tabs.currentWidget()
+        self.tabs.setFixedHeight(page.sizeHint().height() + self.tabs.tabBar().sizeHint().height() + 8)
+
+    def sync_resize_size(self, axis):
+        self.resize_axis = axis
+        self.resize_target = self.resize_width.value() if axis == 'width' else self.resize_height.value()
+        if self.current is None or not self.keep_ratio.isChecked():
+            return
+        h, w = self.current.shape[:2]
+        # Match the existing algorithm's integer rounding, using only the edited axis.
+        ratio = self.resize_width.value() / w if axis == 'width' else self.resize_height.value() / h
+        with QSignalBlocker(self.resize_width), QSignalBlocker(self.resize_height):
+            self.resize_width.setValue(max(1, int(w * ratio)))
+            self.resize_height.setValue(max(1, int(h * ratio)))
 
     def build_rotate(self):
         form = self.tab_form('Rotate')
         self.angle = spin(0, -360, 360, True)
         self.rotate_scale = spin(1, .01, 10, True)
-        self.keep_full = QCheckBox('Mở rộng canvas, giữ toàn bộ ảnh')
+        self.keep_full = QCheckBox('Keep Full Image · Giữ toàn bộ ảnh')
         self.keep_full.setChecked(True)
-        self.rotate_interp = combo(alg.PERSPECTIVE_INTERPOLATIONS)
-        self.rotate_border = combo(alg.BORDER_MODES)
+        self.rotate_interp = combo(PERSPECTIVE_INTERPOLATIONS)
+        self.rotate_border = combo(BORDER_MODES)
         self.rotate_background = combo(['Trắng', 'Đen'])
         for name, widget in [('Góc (độ)', self.angle), ('Scale', self.rotate_scale),
                 ('', self.keep_full), ('Nội suy', self.rotate_interp),
@@ -234,7 +279,7 @@ class MainWindow(QMainWindow):
         form.addRow(QLabel('Góc dương: ngược chiều kim đồng hồ.'))
 
     def build_perspective(self):
-        form = self.tab_form('Phối cảnh')
+        form = self.tab_form('Perspective')
         label = QLabel('Kéo các nút trên ảnh, nhập X/Y hoặc xóa rồi bấm 4 góc. Thuật toán tự sắp xếp TL → TR → BR → BL.')
         label.setWordWrap(True)
         form.addRow(label)
@@ -262,14 +307,15 @@ class MainWindow(QMainWindow):
         self.persp_height = spin(0, 0, 24000)
         self.persp_width.setSpecialValueText('Tự động')
         self.persp_height.setSpecialValueText('Tự động')
-        self.persp_interp = combo(alg.PERSPECTIVE_INTERPOLATIONS)
-        self.persp_border = combo(alg.BORDER_MODES)
+        self.persp_interp = combo(PERSPECTIVE_INTERPOLATIONS)
+        self.persp_border = combo(BORDER_MODES)
         self.persp_background = combo(['Trắng', 'Đen'])
         for name, widget in [('Rộng đầu ra', self.persp_width), ('Cao đầu ra', self.persp_height),
             ('Nội suy', self.persp_interp), ('Kiểu biên', self.persp_border), ('Nền Constant', self.persp_background)]:
             form.addRow(name, widget)
 
     def error(self, message):
+        self.update_summary('Lỗi · ' + message)
         QMessageBox.warning(self, 'Không thể thực hiện', message)
 
     def set_busy(self, busy):
@@ -333,7 +379,7 @@ class MainWindow(QMainWindow):
             self.error('Không đọc được khung hình này.')
             return
         try:
-            alg.validate_image(frame)
+            validate_image(frame)
             self.accept_source(frame, f'{self.video_path} · frame {index}')
         except ValueError as exc:
             self.error(str(exc))
@@ -356,9 +402,13 @@ class MainWindow(QMainWindow):
         self.before.set_image(image)
         self.after.set_image(None)
         self.metrics.setRowCount(0)
+        self.update_details()
         h, w = image.shape[:2]
-        self.resize_width.setValue(w)
-        self.resize_height.setValue(h)
+        self.resize_axis = 'width'
+        self.resize_target = w
+        with QSignalBlocker(self.resize_width), QSignalBlocker(self.resize_height):
+            self.resize_width.setValue(w)
+            self.resize_height.setValue(h)
         for x, y in self.point_spins:
             x.blockSignals(True)
             y.blockSignals(True)
@@ -369,6 +419,7 @@ class MainWindow(QMainWindow):
         self.default_points()
         self.mode_changed()
         self.set_busy(False)
+        self.update_summary('Sẵn sàng')
 
     def default_points(self):
         if self.current is not None:
@@ -388,7 +439,15 @@ class MainWindow(QMainWindow):
             y.setValue(points[i][1] if i < len(points) else 0)
             x.blockSignals(False)
             y.blockSignals(False)
-        self.point_status.setText(f'Đã chọn {len(points)}/4 góc · Tọa độ theo pixel ảnh đầu vào. Kéo nút tròn để chỉnh.')
+        if len(points) != 4:
+            message = f'Đã chọn {len(points)}/4 góc · Hãy chọn đủ 4 góc trên ảnh Before.'
+        else:
+            try:
+                order_points(points)
+                message = 'Đã chọn 4/4 góc · Kéo nút tròn để chỉnh vị trí.'
+            except ValueError as exc:
+                message = str(exc)
+        self.point_status.setText(message)
 
     def points_from_spins(self):
         if self.current is not None:
@@ -396,9 +455,11 @@ class MainWindow(QMainWindow):
             self.sync_points(self.before.points)
 
     def mode_changed(self):
+        self.fit_controls()
         self.before.editable = self.tabs.currentIndex() == 2
         self.before.redraw_points()
         self.point_status.setVisible(self.before.editable)
+        self.update_summary()
 
     def parameters(self):
         mode = self.tabs.currentIndex()
@@ -407,8 +468,12 @@ class MainWindow(QMainWindow):
             if self.resize_mode.currentIndex() == 0:
                 params['scale'] = self.resize_scale.value()
             else:
-                params.update(width=self.resize_width.value(), height=self.resize_height.value(),
-                              keep_aspect_ratio=self.keep_ratio.isChecked())
+                params['keep_aspect_ratio'] = self.keep_ratio.isChecked()
+                if self.keep_ratio.isChecked():
+                    # Passing both rounded dimensions can shrink the result a second time.
+                    params[self.resize_axis] = self.resize_target
+                else:
+                    params.update(width=self.resize_width.value(), height=self.resize_height.value())
             return 'Resize', params
         if mode == 1:
             return 'Rotate', {'angle': self.angle.value(), 'scale': self.rotate_scale.value(),
@@ -428,7 +493,9 @@ class MainWindow(QMainWindow):
         self.info = {}
         self.after.set_image(None)
         self.metrics.setRowCount(0)
+        self.update_details()
         self.set_busy(True)
+        self.update_summary('Đang xử lý…')
         self.statusBar().showMessage(f'Đang chạy {operation}…')
         self.worker = TransformWorker(self.current, operation, params)
         self.worker.result_ready.connect(self.show_result)
@@ -438,14 +505,24 @@ class MainWindow(QMainWindow):
 
     def worker_finished(self):
         self.set_busy(False)
+        self.update_summary('Hoàn tất' if self.result is not None else 'Lỗi · Kiểm tra tham số')
         self.statusBar().showMessage('Đã xử lý xong.' if self.result is not None else 'Chưa có kết quả; hãy kiểm tra tham số.')
 
     def show_result(self, result, info):
         self.result, self.info = result, info
         self.after.set_image(result)
-        self.metrics.setRowCount(len(info))
-        # Các phép đo dễ đọc trước; ma trận và tham số chi tiết ở cuối bảng.
-        entries = sorted(info.items(), key=lambda item: isinstance(item[1], (dict, np.ndarray)))
+        operation = info['Phép biến đổi']
+        if operation == 'Resize':
+            keys = ['MSE', 'PSNR (dB)', 'SSIM (cửa sổ)']
+        elif operation == 'Rotate':
+            keys = ['Góc (độ, dương = ngược kim đồng hồ)', 'Scale xoay', 'Giữ toàn bộ']
+        else:
+            keys = ['sharpness', 'selected_area_ratio', 'reprojection_max_px']
+        labels = {'sharpness': 'Độ sắc nét (Laplacian)',
+                  'selected_area_ratio': 'Diện tích chọn / ảnh',
+                  'reprojection_max_px': 'Sai số chiếu lại lớn nhất (px)'}
+        entries = [(labels.get(key, key), info[key]) for key in keys]
+        self.metrics.setRowCount(len(entries))
         for row, (key, value) in enumerate(entries):
             if isinstance(value, float):
                 text = f'{value:.5g}'
@@ -458,6 +535,26 @@ class MainWindow(QMainWindow):
             self.metrics.setItem(row, 0, QTableWidgetItem(key))
             self.metrics.setItem(row, 1, QTableWidgetItem(text))
         self.metrics.resizeRowsToContents()
+        self.evaluation_note.setText(info.get('Ghi chú', 'Keep Full mở rộng canvas để giữ mép ảnh khi xoay.'))
+        self.update_details()
+        self.update_summary('Hoàn tất')
+
+    def update_details(self):
+        self.details_toggle.setEnabled(bool(self.info))
+        visible = bool(self.info) and self.details_toggle.isChecked()
+        self.metrics.setVisible(visible)
+        self.evaluation_note.setVisible(visible)
+
+    def update_summary(self, status=None):
+        if status is not None:
+            self.result_status = status
+        operation = self.info.get('Phép biến đổi', self.tabs.tabText(self.tabs.currentIndex()))
+        input_size = '—' if self.current is None else f'{self.current.shape[1]}×{self.current.shape[0]}'
+        output_size = self.info.get('Đầu ra (W×H)', '—')
+        elapsed = self.info.get('Thời gian biến đổi và kiểm tra (ms)')
+        duration = '—' if elapsed is None else f'{elapsed:.1f} ms'
+        self.summary.setText(f'Tool: {operation} | Input: {input_size} | Output: {output_size} | '
+                             f'Time: {duration} | Status: {getattr(self, "result_status", "Sẵn sàng")}')
 
     def commit_result(self):
         if self.result is not None:

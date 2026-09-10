@@ -6,11 +6,11 @@
 
 1. [README](../README.md): phạm vi, cách chạy, tính năng và giới hạn.
 2. [Nguồn và sửa lỗi](THAY_DOI.md): bảng ánh xạ cell notebook sang module, giải thích từng thay đổi.
-3. [Thuật toán production](../scan_app/algorithms.py): resize, rotate, perspective và metric.
+3. Thuật toán production: [Resize](../scan_app/processing/resize.py), [Rotate](../scan_app/processing/rotate.py), [Perspective](../scan_app/processing/perspective.py); [hằng số và hàm dùng chung](../scan_app/processing/__init__.py).
 4. Baseline trích nguyên văn: [Resize/Rotate](../tests/reference/resize_rotate.py), [Perspective](../tests/reference/perspective.py). [Manifest](source_manifest.json) lưu hash notebook và vị trí cell.
 5. [GUI](../scan_app/window.py), [canvas chọn góc](../scan_app/canvas.py), [I/O Unicode](../scan_app/image_io.py), [entry point](../main.py).
 6. [Kiểm thử thuật toán](../tests/test_algorithms.py), [kiểm thử GUI](../tests/test_gui.py), [kết quả kiểm thử](KIEM_THU.md).
-7. [Script dữ liệu mô phỏng](../scripts/generate_demo.py), [góc ground truth](../data/synthetic/manifest.json), [kết quả định lượng](../data/synthetic/evaluation.csv).
+7. [Script dữ liệu mô phỏng](../scripts/generate_demo.py), [góc ground truth](../samples/synthetic/manifest.json), [kết quả định lượng](../samples/synthetic/evaluation.csv).
 
 PDF đề bài và notebook đầy đủ không nằm trong repo; có phần yêu cầu liên quan được ghi lại và các hàm baseline đã trích. Người review cần các file gốc nếu muốn xác minh độc lập nội dung đề và SHA-256, hoặc đọc các cell khác ngoài phần thuật toán đã trích.
 
@@ -21,7 +21,7 @@ PDF đề bài và notebook đầy đủ không nằm trong repo; có phần yê
 - SSIM cửa sổ của Resize so với SSIM global của Perspective; ý nghĩa và giới hạn của reprojection, Laplacian, PSNR.
 - Chọn/kéo góc khi đổi kích thước cửa sổ; vòng đời QThread; ghép bước và tránh lưu nhầm kết quả.
 - Xử lý lỗi khi đọc ảnh/video, kích thước lớn, Unicode và xuất JSON.
-- Chất lượng và phần còn thiếu trong các kiểm thử. 73 kiểm thử đạt là kết quả đã ghi nhận, không bảo đảm code không còn bug.
+- Chất lượng và phần còn thiếu trong các kiểm thử. 80 kiểm thử đạt là kết quả đã ghi nhận, không bảo đảm code không còn bug.
 
 ## Prompt có thể gửi kèm link repo
 

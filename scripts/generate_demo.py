@@ -6,13 +6,16 @@ import json
 from pathlib import Path
 import cv2
 import numpy as np
-from scan_app import algorithms as alg
+from scan_app.processing import mse, psnr, PERSPECTIVE_INTERPOLATIONS
+from scan_app.processing.resize import resize_image
+from scan_app.processing.rotate import rotate_image
+from scan_app.processing.perspective import ssim_global, scan_perspective
 from scan_app.image_io import write_image
 from tests.reference.perspective import make_synthetic_document
 
 
 def main():
-    output = Path('data/synthetic')
+    output = Path('samples/synthetic')
     output.mkdir(parents=True, exist_ok=True)
     doc = make_synthetic_document()
     write_image(output/'ground_truth.png', doc)
@@ -33,14 +36,14 @@ def main():
         manifest.append({'image': name, 'points': points.tolist(), 'output_width': 700,
                          'output_height': 500, 'type': 'synthetic',
                          'blur': i in (3, 7), 'brightness_changed': i in (4, 8)})
-        for interpolation in alg.PERSPECTIVE_INTERPOLATIONS:
-            restored, info = alg.scan_perspective(image, points, interpolation=interpolation,
+        for interpolation in PERSPECTIVE_INTERPOLATIONS:
+            restored, info = scan_perspective(image, points, interpolation=interpolation,
                                                  output_width=700, output_height=500)
-            resized = alg.resize_image(image, scale=.5)
-            rotated = alg.rotate_image(image, angle=30)
+            resized = resize_image(image, scale=.5)
+            rotated = rotate_image(image, angle=30)
             rows.append({'image': name, 'interpolation': interpolation,
-                'MSE': alg.mse(doc, restored), 'PSNR_dB': alg.psnr(doc, restored),
-                'SSIM_global': alg.ssim_global(doc, restored),
+                'MSE': mse(doc, restored), 'PSNR_dB': psnr(doc, restored),
+                'SSIM_global': ssim_global(doc, restored),
                 'reprojection_max_px': info['reprojection_max_px'],
                 'warp_ms': info['processing_time_ms'],
                 'resize_shape': str(resized.shape), 'rotate_shape': str(rotated.shape)})

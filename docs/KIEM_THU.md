@@ -1,6 +1,6 @@
 # Kết quả kiểm thử
 
-Môi trường chạy: Windows, Python 3.13; xem `requirements-lock.txt` để có phiên bản thư viện. Kết quả lần chạy ngày 10/09/2026: **73 kiểm thử đạt**.
+Môi trường chạy: Windows, Python 3.13; xem `requirements-lock.txt` để có phiên bản thư viện. Kết quả lần chạy ngày 10/09/2026: **80 kiểm thử đạt** (73 test cũ được giữ nguyên phạm vi; thêm 7 trường hợp GUI).
 
 Đã kiểm tra:
 
@@ -11,9 +11,20 @@ Môi trường chạy: Windows, Python 3.13; xem `requirements-lock.txt` để c
 - Video AVI thử nghiệm có ba khung hình: mở bằng hộp thoại giả lập, chọn khung số 2, kiểm tra giá trị pixel đọc được và giải phóng VideoCapture.
 - Xem ảnh chụp widget với ảnh tài liệu mô phỏng để kiểm tra tiếng Việt, bố cục, điểm nguồn và ảnh sau biến đổi. Phép thử tự động dùng Qt offscreen; font Segoe UI được nạp rõ ràng cho chế độ này. Chưa thử thủ công mọi codec video hoặc mọi mức DPI màn hình.
 
+## Bổ sung sau refactor source/UI
+
+- Resize đồng bộ Width/Height cả hai chiều, làm tròn pixel khớp output, bật/tắt giữ tỷ lệ, mở ảnh kích thước khác.
+- Ẩn tham số không thuộc tab/chế độ hiện tại; thu gọn/mở đánh giá, metric theo phép biến đổi, thanh trạng thái vẫn mô tả đúng ảnh After khi đổi tab.
+- Chưa mở ảnh gọi Apply/Save/Reset; Reset sau xử lý; Perspective thiếu 4 điểm hoặc trùng điểm báo lỗi và có thể chọn lại để chạy tiếp.
+- Kéo điểm bằng Qt Test sau đổi kích thước cửa sổ, đối chiếu tọa độ spinbox và polygon; kiểm tra màu BGR thành RGB trong pixmap; đổi tên video kiểm thử sang đường dẫn tiếng Việt.
+
+- Entry point `main.main()` khởi động thành công bằng Qt platform `windows`, cả khi chưa mở ảnh và khi truyền ảnh demo qua tham số dòng lệnh; đóng sạch bằng Qt event loop.
+- Đối chiếu AST: cả 17 hàm xử lý giữ nguyên so với commit trước refactor. Toàn bộ 23 file dữ liệu có Git blob hash không đổi sau khi chuyển sang `samples/synthetic/`.
+- Đã xem ảnh chụp GUI ở 1280×800 và 1100×750; tab Resize gọn theo nội dung, hai canvas cân đối, không tràn ngang vùng tham số.
+
 ## Bộ mô phỏng
 
-Dùng nguyên hàm `make_synthetic_document` của notebook Perspective. Tạo 10 tứ giác với nhiễu tọa độ có seed 2026; hai ảnh thêm blur, hai ảnh đổi độ sáng. Mỗi ảnh có bốn góc thật đã biết, ghi trong `data/synthetic/manifest.json`. Có 40 cấu hình phối cảnh được đo bằng cùng metric trong notebook.
+Dùng nguyên hàm `make_synthetic_document` của notebook Perspective. Tạo 10 tứ giác với nhiễu tọa độ có seed 2026; hai ảnh thêm blur, hai ảnh đổi độ sáng. Mỗi ảnh có bốn góc thật đã biết, ghi trong `samples/synthetic/manifest.json`. Có 40 cấu hình phối cảnh được đo bằng cùng metric trong notebook.
 
 Kết quả trung bình trên 10 ảnh (PSNR đo theo dB; thời gian chỉ warp, phụ thuộc máy và tải lúc chạy):
 
@@ -24,7 +35,7 @@ Kết quả trung bình trên 10 ảnh (PSNR đo theo dB; thời gian chỉ warp
 | Cubic | 25.2804 | 0.972403 | 4.894 |
 | Lanczos4 | 25.5114 | 0.972863 | 13.508 |
 
-Sai số reprojection lớn nhất trên 40 cấu hình: **1.3501e-13 pixel**. Kết quả chi tiết ở `data/synthetic/evaluation.csv`. Mỗi ảnh còn được chạy resize scale 0.5 và rotate 30°, với kích thước output ghi trong bảng.
+Sai số reprojection lớn nhất trên 40 cấu hình: **1.3501e-13 pixel**. Kết quả chi tiết ở `samples/synthetic/evaluation.csv`. Mỗi ảnh còn được chạy resize scale 0.5 và rotate 30°, với kích thước output ghi trong bảng.
 
 Trên bộ mô phỏng này, Cubic/Lanczos4 có chỉ số trung bình tốt hơn nhưng thời gian cao hơn. Không suy rộng thứ hạng này cho mọi tài liệu thực tế. Blur/độ sáng khiến sai khác với ground truth bao gồm cả nhiễu đầu vào lẫn mất mát nội suy; MSE/PSNR không tách được từng nguyên nhân. SSIM global không thay thế SSIM cửa sổ, và reprojection gần 0 không chứng minh bốn góc do người dùng chọn là đúng.
 

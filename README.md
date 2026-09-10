@@ -2,7 +2,7 @@
 
 Ứng dụng PySide6 chuyển phần Resize, Rotate và Perspective Transform từ **hai notebook của nhóm** thành project desktop. Đã đọc đề PDF 14 trang và toàn bộ cell của hai notebook trước khi triển khai. Phạm vi lần chuyển này là **Project 1: Scan tài liệu, trang 7**. Project 2: Đếm sản phẩm là bài riêng; hai notebook không chứa thuật toán của phần đó.
 
-**Dành cho người review:** xem [hướng dẫn đọc source](docs/REVIEW_GUIDE.md), [thuật toán](scan_app/algorithms.py) và [nhật ký sửa lỗi](docs/THAY_DOI.md). Repo chứa bản trích hàm gốc để đối chiếu trong `tests/reference/`.
+**Dành cho người review:** xem [hướng dẫn đọc source](docs/REVIEW_GUIDE.md), [thuật toán](scan_app/processing/) và [nhật ký sửa lỗi](docs/THAY_DOI.md). Repo chứa bản trích hàm gốc để đối chiếu trong `tests/reference/`.
 
 ![Giao diện scan tài liệu](docs/gui-preview.png)
 
@@ -17,7 +17,7 @@ Mở PowerShell tại thư mục project:
 Mở sẵn một ảnh demo:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py data/synthetic/document_01.png
+.\.venv\Scripts\python.exe main.py samples/synthetic/document_01.png
 ```
 
 Môi trường `.venv` đã được cài và kiểm thử. Để cài lại trên máy khác có Python 3.11 trở lên:
@@ -33,29 +33,32 @@ py -m venv .venv
 ## Sử dụng
 
 1. **Mở ảnh**, hoặc **Mở video** rồi nhập số khung hình và chọn **Lấy khung hình**. Video được dùng làm nguồn ảnh tĩnh; ứng dụng chưa xử lý/xuất cả luồng video.
-2. Chọn tab **Resize**, **Rotate** hoặc **Phối cảnh**, đặt tham số và bấm **Áp dụng phép biến đổi**.
+2. Chọn tab **Resize**, **Rotate** hoặc **Perspective**, đặt tham số và bấm **Áp dụng phép biến đổi**.
 3. Với phối cảnh: kéo 4 nút trên ảnh, nhập X/Y, hoặc xóa và bấm 4 góc theo thứ tự bất kỳ. Số 1–4 là số điểm nhập; thuật toán tự sắp xếp góc. Tọa độ dùng pixel ảnh gốc, có xử lý tỷ lệ hiển thị. Kích thước 0/Tự động giữ cách tính từ độ dài cạnh trong notebook; có thể chỉ định cả W/H để giữ tỷ lệ tài liệu mong muốn.
-4. So sánh ảnh trái/phải và bảng đánh giá phía dưới. Tham số được xử lý khi bấm Áp dụng, không tự chạy mỗi lần chỉnh. Lưu luôn dùng **kết quả lần chạy gần nhất**.
+4. So sánh hai vùng Before/After và thanh Tool | Input | Output | Time | Status. Bật **Chi tiết đánh giá** để xem chỉ số phù hợp với kết quả đang hiển thị; toàn bộ metric và ma trận vẫn có trong JSON. Tham số được xử lý khi bấm Áp dụng, không tự chạy mỗi lần chỉnh. Lưu luôn dùng **kết quả lần chạy gần nhất**.
 5. **Dùng kết quả làm đầu vào tiếp** để ghép nhiều bước, ví dụ Phối cảnh → Rotate → Resize. **Về ảnh gốc** xóa chuỗi bước và khôi phục ảnh ban đầu.
 6. **Lưu ảnh kết quả** hỗ trợ PNG/JPEG/BMP/TIFF; **Xuất đánh giá JSON** lưu nguồn ảnh, lịch sử các bước, tham số, ma trận và chỉ số kết quả hiện tại.
 
-Phần Rotate có góc dương ngược chiều kim đồng hồ, scale, giữ toàn bộ canvas, nội suy, kiểu biên và nền trắng/đen. Resize có năm kiểu nội suy; Rotate/Phối cảnh có bốn kiểu giống notebook phối cảnh. Khi Resize khóa tỷ lệ và nhập cả W/H, ảnh được đặt vừa trong hộp đó, không kéo méo.
+Phần Rotate có góc dương ngược chiều kim đồng hồ, scale, giữ toàn bộ canvas, nội suy, kiểu biên và nền trắng/đen. Resize có năm kiểu nội suy; Rotate/Phối cảnh có bốn kiểu giống notebook phối cảnh. Khi Resize khóa tỷ lệ, sửa Width sẽ cập nhật Height và ngược lại theo ảnh đầu vào hiện tại. GUI truyền chiều vừa sửa vào thuật toán để tránh làm tròn hai lần; API `resize_image` vẫn giữ quy ước hộp giới hạn khi truyền cả W/H. Mở ảnh, đổi khung hình, ghép bước hoặc Reset đều cập nhật W/H theo ảnh đầu vào mới.
 
 ## Tái sử dụng và sửa lỗi
 
 Đọc `docs/THAY_DOI.md` để xem bảng nguồn hàm và từng lỗi. `docs/source_manifest.json` ghi SHA-256 của notebook đầu vào và vị trí cell (đếm từ 0). `tests/reference/` chứa bản trích nguyên văn các hàm gốc dùng để kiểm tra hồi quy. Hai notebook gốc và PDF không bị sửa.
 
 ```text
-main.py                     Điểm chạy ứng dụng
-scan_app/algorithms.py       Thuật toán refactor từ notebook
-scan_app/window.py           Tham số, luồng thao tác, worker và đánh giá
-scan_app/canvas.py           Hiển thị ảnh và chọn/kéo góc
-scan_app/image_io.py         Đọc/ghi đường dẫn Unicode
-tests/reference/            Hàm nguyên văn từ notebook
-tests/                      Đối chiếu thuật toán và kiểm thử GUI
-scripts/generate_demo.py     Tạo dữ liệu bằng hàm tài liệu mô phỏng gốc
-data/synthetic/              10 ảnh đầu vào mô phỏng, ground truth, kết quả
-docs/                       Nguồn thuật toán, thay đổi và kết quả thử nghiệm
+main.py                            Điểm chạy ứng dụng
+scan_app/processing/resize.py       Resize và đánh giá hồi kích thước
+scan_app/processing/rotate.py       Rotate, canvas keep-full
+scan_app/processing/perspective.py  Perspective và đánh giá phối cảnh
+scan_app/processing/__init__.py     Hằng số, validation và metric dùng chung
+scan_app/window.py                 Tham số, thao tác, worker và đánh giá
+scan_app/canvas.py                 Hiển thị ảnh và chọn/kéo góc
+scan_app/image_io.py               Đọc/ghi đường dẫn Unicode
+tests/reference/                   Hàm nguyên văn từ notebook
+tests/                             Đối chiếu thuật toán và kiểm thử GUI
+scripts/generate_demo.py           Tạo dữ liệu tài liệu mô phỏng
+samples/synthetic/                 10 ảnh mô phỏng, ground truth, kết quả
+docs/                              Nguồn thuật toán, thay đổi và kiểm thử
 ```
 
 ## Kiểm thử và tái tạo demo
@@ -68,7 +71,7 @@ docs/                       Nguồn thuật toán, thay đổi và kết quả t
 
 Nếu môi trường được tạo bằng `uv` không có pip, dùng `uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt`.
 
-Script demo tạo lại các file có tên cố định trong `data/synthetic`. `manifest.json` lưu bốn góc riêng cho từng ảnh; `evaluation.csv` có 40 dòng cho 10 ảnh × 4 kiểu nội suy. Để thử ảnh đầu tiên, mở `document_01.png`, nhập bốn góc từ manifest và đặt W=700, H=500.
+Script demo tạo lại các file có tên cố định trong `samples/synthetic`. `manifest.json` lưu bốn góc riêng cho từng ảnh; `evaluation.csv` có 40 dòng cho 10 ảnh × 4 kiểu nội suy. Để thử ảnh đầu tiên, mở `document_01.png`, nhập bốn góc từ manifest và đặt W=700, H=500.
 
 ## Cách hiểu đánh giá và phạm vi bàn giao
 
