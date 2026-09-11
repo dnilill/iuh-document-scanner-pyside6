@@ -41,6 +41,8 @@ samples/synthetic/            Ảnh tài liệu mô phỏng để chạy thử
 scripts/generate_demo.py       Tạo lại bộ ảnh mô phỏng
 ```
 
+Trong `perspective.py` có ba hàm chính: `order_points`, `compute_output_size`, `perspective_transform`; thêm `reprojection_error` để kiểm tra ánh xạ góc. Luồng scan là: sắp 4 điểm → tính rộng/cao → tạo góc đích → `getPerspectiveTransform` → `warpPerspective`.
+
 Luồng chương trình: nút **Áp dụng** lấy tham số → `TransformWorker` gọi hàm xử lý → `show_result` hiện ảnh After và thông số. Worker chạy riêng để cửa sổ vẫn phản hồi khi xử lý ảnh lớn. Không có tầng controller/service.
 
 ## Cài đặt và chạy
@@ -75,7 +77,7 @@ Mỗi phép biến đổi luôn dùng ảnh Before; không tự nối nhiều b�
 
 - Resize: MSE, PSNR và SSIM sau khi đưa ảnh kết quả về kích thước ban đầu bằng Linear. Đây là phép đo mất mát do thay đổi kích thước, không phải so sánh với ảnh chuẩn độc lập.
 - Rotate: xem kích thước, góc, scale và thời gian; không so PSNR trực tiếp giữa hai ảnh khác hướng.
-- Perspective: xem độ sắc nét, tỷ lệ diện tích chọn và sai số ánh xạ bốn góc trong mục chi tiết. Sai số nhỏ không có nghĩa là người dùng đã chọn đúng mép giấy.
+- Perspective: hiển thị kích thước vào/ra và thời gian warp. Mục chi tiết chỉ giữ sai số chiếu lại bốn góc; sai số nhỏ không có nghĩa là người dùng đã chọn đúng mép giấy.
 
 ## Kiểm thử
 

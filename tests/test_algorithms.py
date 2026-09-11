@@ -3,12 +3,12 @@ import numpy as np
 import cv2
 import pytest
 from scan_app.processing import (
-    laplacian_variance, mse, psnr, INTERPOLATIONS, PERSPECTIVE_INTERPOLATIONS, BORDER_MODES,
+    laplacian_variance, mse, psnr, ssim_global, INTERPOLATIONS, PERSPECTIVE_INTERPOLATIONS, BORDER_MODES,
 )
 from scan_app.processing.resize import resize_image, evaluate_resize
 from scan_app.processing.rotate import rotate_image
 from scan_app.processing.perspective import (
-    order_points, perspective_transform, ssim_global, scan_perspective,
+    order_points, perspective_transform, reprojection_error,
 )
 from scan_app.image_io import read_image, write_image
 from tests.reference import resize_rotate as rr, perspective as pp
@@ -79,6 +79,31 @@ def test_diamond_order_is_unique_and_permutation_invariant():
         assert len(np.unique(actual, axis=0)) == 4
 
 
+def test_perspective_click_order_and_auto_size(image):
+    points = [[5, 5], [75, 5], [75, 55], [5, 55]]
+    expected = perspective_transform(image, points)
+    assert expected[0].shape[:2] == (50, 70)
+    for clicked_points in itertools.permutations(points):
+        actual = perspective_transform(image, clicked_points)
+        for before, after in zip(expected[:4], actual[:4]):
+            np.testing.assert_array_equal(before, after)
+
+
+def test_perspective_invalid_inputs(image):
+    points = [[5, 5], [75, 5], [75, 55], [5, 55]]
+    with pytest.raises(ValueError):
+        perspective_transform(None, points)
+    with pytest.raises(ValueError):
+        perspective_transform(image, points[:3])
+    for size in [0, -1, 1, 2.5, float('nan'), 24_000_000]:
+        with pytest.raises(ValueError):
+            perspective_transform(image, points, output_width=size)
+        with pytest.raises(ValueError):
+            perspective_transform(image, points, output_height=size)
+    with pytest.raises(ValueError):
+        perspective_transform(image, [[0, 0], [89.5, 0], [89.5, 59], [0, 59]])
+
+
 @pytest.mark.parametrize('points', [
     [[0, 0], [0, 0], [20, 20], [0, 20]],
     [[0, 0], [10, 0], [20, 0], [30, 0]],
@@ -93,13 +118,14 @@ def test_invalid_corners(points):
 
 def test_perspective_identity_and_reprojection(image):
     pts = [[0, 0], [89, 0], [89, 59], [0, 59]]
-    result, info = scan_perspective(image, pts, output_width=90, output_height=60)
+    result, matrix, src, dst, _ = perspective_transform(image, pts, output_width=90, output_height=60)
+    _, errors = reprojection_error(src, dst, matrix)
     np.testing.assert_array_equal(result, image)
-    assert info['reprojection_max_px'] < 1e-3
+    assert errors.max() < 1e-3
     with pytest.raises(ValueError):
-        scan_perspective(image, pts, output_width=1)
+        perspective_transform(image, pts, output_width=1)
     with pytest.raises(ValueError):
-        scan_perspective(image, [[0, 0], [99, 0], [99, 59], [0, 59]])
+        perspective_transform(image, [[0, 0], [99, 0], [99, 59], [0, 59]])
 
 
 def test_resize_metrics_match_notebook(image):
@@ -136,7 +162,8 @@ def test_synthetic_ground_truth():
     points = np.float32([[120, 80], [760, 40], [820, 610], [80, 650]])
     distorted = cv2.warpPerspective(doc, cv2.getPerspectiveTransform(src, points), (900, 700),
                                     borderValue=(220, 220, 220))
-    restored, info = scan_perspective(distorted, points, output_width=700, output_height=500)
-    assert info['reprojection_max_px'] < 1e-3
+    restored, matrix, src, dst, _ = perspective_transform(distorted, points, output_width=700, output_height=500)
+    _, errors = reprojection_error(src, dst, matrix)
+    assert errors.max() < 1e-3
     assert psnr(doc, restored) > 20
     assert ssim_global(doc, restored) > .9

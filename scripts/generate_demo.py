@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 import cv2
 import numpy as np
-from scan_app.processing import mse, psnr, PERSPECTIVE_INTERPOLATIONS
+from scan_app.processing import mse, psnr, ssim_global, PERSPECTIVE_INTERPOLATIONS
 from scan_app.processing.resize import resize_image
 from scan_app.processing.rotate import rotate_image
-from scan_app.processing.perspective import ssim_global, scan_perspective
+from scan_app.processing.perspective import perspective_transform, reprojection_error
 from scan_app.image_io import write_image
 from tests.reference.perspective import make_synthetic_document
 
@@ -37,15 +37,16 @@ def main():
                          'output_height': 500, 'type': 'synthetic',
                          'blur': i in (3, 7), 'brightness_changed': i in (4, 8)})
         for interpolation in PERSPECTIVE_INTERPOLATIONS:
-            restored, info = scan_perspective(image, points, interpolation=interpolation,
-                                                 output_width=700, output_height=500)
+            restored, matrix, src_points, dst_points, elapsed = perspective_transform(
+                image, points, interpolation=interpolation, output_width=700, output_height=500)
+            _, errors = reprojection_error(src_points, dst_points, matrix)
             resized = resize_image(image, scale=.5)
             rotated = rotate_image(image, angle=30)
             rows.append({'image': name, 'interpolation': interpolation,
                 'MSE': mse(doc, restored), 'PSNR_dB': psnr(doc, restored),
                 'SSIM_global': ssim_global(doc, restored),
-                'reprojection_max_px': info['reprojection_max_px'],
-                'warp_ms': info['processing_time_ms'],
+                'reprojection_max_px': float(errors.max()),
+                'warp_ms': elapsed,
                 'resize_shape': str(resized.shape), 'rotate_shape': str(rotated.shape)})
             if interpolation == 'Linear':
                 write_image(output/f'restored_{i+1:02d}.png', restored)

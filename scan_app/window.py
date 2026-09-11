@@ -16,7 +16,7 @@ from .processing import (
 )
 from .processing.resize import resize_image, evaluate_resize
 from .processing.rotate import rotate_image
-from .processing.perspective import order_points, scan_perspective
+from .processing.perspective import order_points, perspective_transform, reprojection_error
 from .canvas import ImageCanvas
 from .image_io import read_image, write_image
 
@@ -90,8 +90,9 @@ class TransformWorker(QThread):
                 info = {'Góc (độ, dương = ngược kim đồng hồ)': self.params['angle'],
                         'Scale xoay': self.params['scale'], 'Giữ toàn bộ': self.params['keep_full']}
             else:
-                result, info = scan_perspective(self.image, **self.params)
-                elapsed = (time.perf_counter()-start)*1000
+                result, matrix, src, dst, elapsed = perspective_transform(self.image, **self.params)
+                _, errors = reprojection_error(src, dst, matrix)
+                info = {'reprojection_max_px': float(errors.max())}
                 info['Ghi chú'] = 'Reprojection kiểm tra ánh xạ 4 góc; không đánh giá độ đúng khi chọn góc.'
             info.update({'Phép biến đổi': self.operation,
                          'Đầu vào (W×H)': f'{self.image.shape[1]}×{self.image.shape[0]}',
@@ -504,10 +505,8 @@ class MainWindow(QMainWindow):
         elif operation == 'Rotate':
             keys = ['Góc (độ, dương = ngược kim đồng hồ)', 'Scale xoay', 'Giữ toàn bộ']
         else:
-            keys = ['sharpness', 'selected_area_ratio', 'reprojection_max_px']
-        labels = {'sharpness': 'Độ sắc nét (Laplacian)',
-                  'selected_area_ratio': 'Diện tích chọn / ảnh',
-                  'reprojection_max_px': 'Sai số chiếu lại lớn nhất (px)'}
+            keys = ['reprojection_max_px']
+        labels = {'reprojection_max_px': 'Sai số chiếu lại lớn nhất (px)'}
         entries = [(labels.get(key, key), info[key]) for key in keys]
         self.metrics.setRowCount(len(entries))
         for row, (key, value) in enumerate(entries):

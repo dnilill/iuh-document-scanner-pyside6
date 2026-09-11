@@ -84,3 +84,16 @@ Phần bên trên ghi lại các phiên bản trước. Giao diện hiện tại
 **Kiểm thử được điều chỉnh:** không xóa hàm test nào. Bỏ các assertion cho xuất JSON/lịch sử ghép bước và ô X/Y vì các chức năng đó đã bỏ khỏi UI. Test Rotate trong workflow giờ xoay ảnh Before 240×180, nên kết quả là 180×240 thay vì xoay ảnh Resize trung gian. Giữ kiểm tra mở/lưu, Resize, Rotate, Perspective, Reset, kéo điểm và Unicode; thêm test palette sáng khi khởi tạo từ palette tối và đọc ảnh lỗi.
 
 **File thay đổi:** `main.py`, `scan_app/window.py`, `scan_app/canvas.py`, `scan_app/processing/resize.py`, `scan_app/processing/perspective.py`, `tests/test_gui.py`, `README.md`, `docs/REVIEW_GUIDE.md`, `docs/KIEM_THU.md`, `docs/THAY_DOI.md`, `docs/gui-preview.png`.
+
+## Đơn giản hóa riêng Perspective – 11/09/2026
+
+- Module giảm từ **7 hàm xuống 4 hàm**: `order_points`, `compute_output_size`, `perspective_transform`, `reprojection_error`.
+- Bỏ `scan_perspective` và `polygon_area`; GUI và script demo gọi trực tiếp `perspective_transform`. Bỏ metric diện tích và độ sắc nét khỏi phần Perspective trên GUI. Thời gian hiển thị cho Perspective là thời gian riêng warp.
+- Chuyển nguyên hàm `ssim_global` sang `processing/__init__.py` cùng các metric dùng chung; giữ đánh giá bộ mô phỏng và kiểm thử SSIM.
+- Giữ sum/diff để sắp góc thông thường. Khi sum/diff chọn trùng góc, tận dụng convex hull đã xếp quanh viền; bỏ tính tâm, arctan2 và sắp góc lần nữa. Giữ quy ước góc bắt đầu ổn định cho hình thoi.
+- Tên biến trong luồng chính là `src_points`, `dst_points`, `width`, `height`, `matrix`, `result`. Tách rõ bốn điểm đích trên bốn dòng. Giữ `getPerspectiveTransform`, `warpPerspective`, nội suy và nền trắng mặc định.
+- `compute_output_size` nhận bốn điểm đã sắp xếp từ `order_points`; `reprojection_error` nhận cặp điểm nguồn/đích tương ứng. Hai helper không sắp xếp/kiểm tra hình học lại. `perspective_transform` vẫn trả tuple `(result, matrix, src_points, dst_points, elapsed_ms)` để đối chiếu notebook và đo sai số.
+- Giữ kiểm tra ảnh, tứ giác lồi, điểm gần thẳng hàng, giới hạn tọa độ, kích thước tối thiểu 2 và ma trận suy biến. Đây là các lỗi thao tác thật; không bỏ test hình thoi hoặc gần thẳng hàng để rút code.
+- Không sửa Resize, Rotate, canvas, light mode hay chức năng click/drag/Before/After/Save. Cập nhật import và cách nhận kết quả trong test/script; không xóa hàm test hoặc assertion cũ.
+
+File thay đổi: `scan_app/processing/perspective.py`, `scan_app/processing/__init__.py`, `scan_app/window.py`, `scripts/generate_demo.py`, `tests/test_algorithms.py`, `tests/test_gui.py`, `README.md`, `docs/REVIEW_GUIDE.md`, `docs/KIEM_THU.md`, `docs/THAY_DOI.md`, `docs/gui-preview.png`.

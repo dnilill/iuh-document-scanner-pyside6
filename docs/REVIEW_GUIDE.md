@@ -13,9 +13,9 @@ Nên đọc theo thứ tự sau:
 
 - Resize giữ tỷ lệ bằng cách lấy chiều vừa sửa làm chuẩn. Khi gọi API với cả Width/Height, ảnh được thu vừa hộp giới hạn.
 - Rotate bật Keep Full sẽ mở rộng canvas và dịch tâm xoay, giúp không mất góc ảnh.
-- Perspective sắp bốn điểm, đo cạnh để tính đầu ra, tạo ma trận bằng `getPerspectiveTransform`, rồi gọi `warpPerspective`.
+- Perspective gọi trực tiếp `perspective_transform`: sắp bốn điểm, đo cạnh để tính đầu ra, tạo ma trận bằng `getPerspectiveTransform`, rồi gọi `warpPerspective`. Hàm trả ảnh và thông tin ma trận/góc/thời gian; `reprojection_error` chỉ dùng cho đánh giá chi tiết. Không còn hàm bọc `scan_perspective`.
 - Before luôn là ảnh vừa mở. After là kết quả của lần áp dụng gần nhất; Reset bỏ kết quả và điểm chọn.
-- Chi tiết đánh giá chỉ hiện chỉ số liên quan đến kết quả. Không có xuất JSON hay lịch sử ghép bước trong giao diện hiện tại.
+- Chi tiết Perspective chỉ giữ sai số chiếu lại bốn góc; SSIM global của bộ mô phỏng nằm trong `processing/__init__.py`. Chi tiết đánh giá chỉ hiện chỉ số liên quan đến kết quả. Không có xuất JSON hay lịch sử ghép bước trong giao diện hiện tại.
 
 Các kiểm tra điểm trùng, thẳng hàng, ma trận suy biến và giới hạn 24 megapixel được giữ để tránh lỗi thật khi thao tác. Không cần học thuộc mọi chi tiết kiểm thử để giải thích ba kỹ thuật.
 

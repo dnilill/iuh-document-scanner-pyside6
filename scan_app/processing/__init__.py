@@ -55,3 +55,16 @@ def mse(img1, img2):
 def psnr(img1, img2):
     m = mse(img1, img2)
     return float('inf') if m == 0 else float(10 * np.log10(255.0 ** 2 / m))
+
+
+def ssim_global(img1, img2):
+    """SSIM global đơn giản của notebook Perspective, khác SSIM cửa sổ."""
+    if img1.shape != img2.shape:
+        raise ValueError('Hai ảnh đánh giá phải cùng kích thước và số kênh.')
+    g1, g2 = gray(img1).astype(np.float64), gray(img2).astype(np.float64)
+    mu1, mu2 = g1.mean(), g2.mean()
+    var1, var2 = g1.var(), g2.var()
+    cov12 = ((g1-mu1)*(g2-mu2)).mean()
+    C1, C2 = (0.01*255)**2, (0.03*255)**2
+    return float(((2*mu1*mu2+C1)*(2*cov12+C2)) /
+                 ((mu1**2+mu2**2+C1)*(var1+var2+C2)))

@@ -71,6 +71,10 @@ def test_gui_workflow(app, tmp_path, monkeypatch):
     window.apply_transform()
     finish_worker(app, window)
     assert window.info['reprojection_max_px'] < 1e-3
+    target = tmp_path / 'scan tài liệu.png'
+    monkeypatch.setattr(QFileDialog, 'getSaveFileName', lambda *args: (str(target), 'PNG'))
+    window.save_image()
+    np.testing.assert_array_equal(read_image(target), window.result)
     assert errors == []
     Path('tmp').mkdir(exist_ok=True)
     window.grab().save('tmp/gui-test.png')

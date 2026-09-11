@@ -1,6 +1,15 @@
 # Kết quả kiểm thử
 
-## Phiên bản hiện tại – 11/09/2026
+## Sau khi đơn giản hóa Perspective – 11/09/2026
+
+**84 test đạt** với `python -X utf8 -m pytest -q`.
+
+- Giữ 82 test trước đó; cập nhật cách gọi từ `scan_perspective` sang `perspective_transform` và import SSIM, giữ các điều kiện kiểm tra cũ.
+- Thêm test 24 thứ tự click cho tứ giác và tính kích thước tự động, test thiếu ảnh/điểm/kích thước đầu ra sai. Test GUI bổ sung lưu và mở lại kết quả Perspective với tên file tiếng Việt.
+- Smoke test trực tiếp Qt/Windows: mở `document_01.png`, click bốn góc theo thứ tự 3–1–4–2, đổi kích thước cửa sổ rồi kéo góc, Apply ra ảnh 700×500, Save PNG tên tiếng Việt và đối chiếu toàn bộ pixel khi mở lại. Polygon và bốn control point vẫn có; sai số chiếu lại < 0.001 px.
+- Đã chụp và xem GUI mới tại `docs/gui-preview.png`. Resize/Rotate/canvas không thay đổi trong lần này.
+
+## Phiên bản trước khi rút gọn Perspective – 11/09/2026
 
 **82 test đạt** với `python -X utf8 -m pytest -q` trên Windows, Python 3.13.
 
