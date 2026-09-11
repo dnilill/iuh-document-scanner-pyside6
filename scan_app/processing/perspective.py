@@ -15,8 +15,10 @@ def order_points(pts):
     if len(hull) != 4 or abs(cv2.contourArea(hull)) < 1:
         raise ValueError('Bốn góc phải khác nhau và tạo tứ giác lồi, không thẳng hàng.')
     edges = np.roll(hull, -1, axis=0) - hull
-    altitudes = np.abs(edges[:, 0] * (np.roll(hull, -2, axis=0) - hull)[:, 1]
-                       - edges[:, 1] * (np.roll(hull, -2, axis=0) - hull)[:, 0]) / np.linalg.norm(edges, axis=1)
+    diagonals = np.roll(hull, -2, axis=0) - hull
+    # Chiều cao quá nhỏ nghĩa là ba góc gần nằm trên một đường thẳng.
+    cross_product = edges[:, 0] * diagonals[:, 1] - edges[:, 1] * diagonals[:, 0]
+    altitudes = np.abs(cross_product) / np.linalg.norm(edges, axis=1)
     if altitudes.min() < 0.5:
         raise ValueError('Các góc gần thẳng hàng; hãy chọn lại vùng tài liệu.')
     s, diff = pts.sum(axis=1), np.diff(pts, axis=1).ravel()
@@ -32,9 +34,15 @@ def order_points(pts):
 
 def compute_output_size(rect):
     tl, tr, br, bl = order_points(rect)
-    # Giữ quy ước độ dài cạnh của notebook (không cộng thêm 1 pixel).
-    return (max(2, int(round(max(np.linalg.norm(tr-tl), np.linalg.norm(br-bl))))),
-            max(2, int(round(max(np.linalg.norm(bl-tl), np.linalg.norm(br-tr))))))
+    # tl/tr/br/bl: trên trái, trên phải, dưới phải, dưới trái.
+    top_width = np.linalg.norm(tr - tl)
+    bottom_width = np.linalg.norm(br - bl)
+    left_height = np.linalg.norm(bl - tl)
+    right_height = np.linalg.norm(br - tr)
+    # Lấy cạnh dài hơn, giữ quy ước notebook (không cộng thêm 1 pixel).
+    width = max(2, int(round(max(top_width, bottom_width))))
+    height = max(2, int(round(max(left_height, right_height))))
+    return width, height
 
 
 def perspective_transform(image, src_points, output_width=None, output_height=None,
@@ -48,6 +56,7 @@ def perspective_transform(image, src_points, output_width=None, output_height=No
     auto_w, auto_h = compute_output_size(rect)
     out_w, out_h = check_size(auto_w if output_width is None else output_width,
                               auto_h if output_height is None else output_height, minimum=2)
+    # Bốn góc tài liệu được đưa về bốn góc hình chữ nhật đầu ra.
     dst = np.array([[0, 0], [out_w-1, 0], [out_w-1, out_h-1], [0, out_h-1]], dtype=np.float32)
     M = cv2.getPerspectiveTransform(rect, dst)
     if not np.isfinite(M).all() or np.linalg.matrix_rank(M) < 3:

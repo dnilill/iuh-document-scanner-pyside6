@@ -24,6 +24,7 @@ class ImageCanvas(QGraphicsView):
         self.drag_index = None
 
     def set_image(self, image):
+        self.drag_index = None
         self.scene().clear()
         self.overlays = []
         self.points = []
@@ -77,6 +78,7 @@ class ImageCanvas(QGraphicsView):
             self.overlays.append(text)
 
     def image_point(self, event):
+        # Đổi vị trí chuột trên widget thành tọa độ pixel của ảnh gốc.
         point = self.mapToScene(event.position().toPoint())
         bounds = self.pixmap.boundingRect()
         return [min(max(point.x(), 0), bounds.width()-1),

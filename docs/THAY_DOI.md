@@ -68,3 +68,19 @@ Giữ nguyên các bước tính chính: `cv2.resize`; `getRotationMatrix2D` + d
 - Cập nhật `README.md`, `docs/REVIEW_GUIDE.md`, `docs/THAY_DOI.md`, `docs/KIEM_THU.md`, `docs/gui-preview.png`.
 - Chuyển nguyên 23 file từ `data/synthetic/` sang `samples/synthetic/`: `document_01.png`–`document_10.png`, `restored_01.png`–`restored_10.png`, `ground_truth.png`, `manifest.json`, `evaluation.csv`.
 - `main.py`, requirements và các hàm baseline trong `tests/reference/` không cần sửa.
+
+## Đơn giản hóa cho bài làm sinh viên – 11/09/2026
+
+Phần bên trên ghi lại các phiên bản trước. Giao diện hiện tại thay đổi như sau:
+
+- Bỏ xuất JSON, hàm chuyển dữ liệu sang JSON, lịch sử và nút ghép kết quả thành đầu vào. Chỉ giữ ảnh Before và kết quả After.
+- Bỏ tám ô X/Y, hàm đồng bộ spinbox với điểm, lựa chọn kiểu biên và màu nền. Điểm vẫn được giữ trong `canvas.points` và chọn/kéo trực tiếp trên ảnh. Ảnh mới và Reset bắt đầu với danh sách điểm rỗng.
+- Toolbar còn Mở ảnh, Mở video, Về ảnh gốc, Lưu ảnh kết quả. Nút áp dụng ghi rõ kỹ thuật đang chọn. Kích thước Perspective mặc định Tự động; backend vẫn dùng Linear và nền trắng.
+- Tách hàm dựng toolbar, phần điều khiển và vùng ảnh trong cùng `window.py`, không thêm module/layer. Giữ một worker để giao diện không đứng khi xử lý.
+- Thay biểu thức tỷ lệ Resize bằng if/elif, tách cách tính cạnh Perspective và kiểm tra gần thẳng hàng thành biến trung gian dễ đọc. Giữ công thức, nội suy, validation và kết quả tính. Rotate không thay đổi.
+- Đặt Fusion, yêu cầu Qt dùng Light, đặt palette và stylesheet rõ ràng. Không đọc/ghi cài đặt theme Windows trong app và không có nút đổi theme.
+- README viết lại ngắn gọn theo mục tiêu, công nghệ, kỹ thuật, cách cài/chạy và sử dụng.
+
+**Kiểm thử được điều chỉnh:** không xóa hàm test nào. Bỏ các assertion cho xuất JSON/lịch sử ghép bước và ô X/Y vì các chức năng đó đã bỏ khỏi UI. Test Rotate trong workflow giờ xoay ảnh Before 240×180, nên kết quả là 180×240 thay vì xoay ảnh Resize trung gian. Giữ kiểm tra mở/lưu, Resize, Rotate, Perspective, Reset, kéo điểm và Unicode; thêm test palette sáng khi khởi tạo từ palette tối và đọc ảnh lỗi.
+
+**File thay đổi:** `main.py`, `scan_app/window.py`, `scan_app/canvas.py`, `scan_app/processing/resize.py`, `scan_app/processing/perspective.py`, `tests/test_gui.py`, `README.md`, `docs/REVIEW_GUIDE.md`, `docs/KIEM_THU.md`, `docs/THAY_DOI.md`, `docs/gui-preview.png`.

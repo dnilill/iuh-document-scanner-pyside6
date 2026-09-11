@@ -6,7 +6,6 @@ from scan_app.window import MainWindow
 
 def main():
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
     window = MainWindow()
     window.show()
     if len(sys.argv) > 1:

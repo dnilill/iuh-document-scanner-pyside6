@@ -1,5 +1,18 @@
 # Kết quả kiểm thử
 
+## Phiên bản hiện tại – 11/09/2026
+
+**82 test đạt** với `python -X utf8 -m pytest -q` trên Windows, Python 3.13.
+
+- Giữ toàn bộ các hàm test, gồm đối chiếu thuật toán Resize/Rotate/Perspective, giữ tỷ lệ, không crop khi xoay, ánh xạ bốn góc, Unicode, mở/lưu và GUI.
+- Bỏ assertion liên quan đến xuất JSON, lịch sử ghép bước và ô X/Y vì đã bỏ các chức năng này. Workflow hiện áp dụng từng phép biến đổi lên ảnh Before. Không bỏ test để che lỗi thuật toán.
+- Thêm test khởi tạo từ palette tối để kiểm tra palette sáng, và test mở ảnh lỗi không làm mất nguồn ảnh hiện tại. Qt offscreen không cung cấp color scheme của hệ điều hành, nên test offscreen kiểm tra màu thực tế của palette/widget.
+- Đã chạy cả ba kỹ thuật bằng Qt platform `windows` trong khi Windows đang đặt Dark Mode (`AppsUseLightTheme=0`, `SystemUsesLightTheme=0`). App báo color scheme Light, các panel giữ nền sáng; không thay đổi cài đặt Windows.
+- Đã xem ảnh chụp ba tab, màn hình chi tiết tại 1100×750 và màn hình chính tại 1280×800. Screenshot mới: `docs/gui-preview.png`.
+- Đã chạy entry point với cửa sổ trống và với ảnh mẫu; cả hai mở/đóng thành công trên Qt/Windows.
+
+## Các lần kiểm tra trước (10/09/2026)
+
 Môi trường chạy: Windows, Python 3.13; xem `requirements-lock.txt` để có phiên bản thư viện. Kết quả lần chạy ngày 10/09/2026: **80 kiểm thử đạt** (73 test cũ được giữ nguyên phạm vi; thêm 7 trường hợp GUI).
 
 Đã kiểm tra:

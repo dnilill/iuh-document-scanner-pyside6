@@ -1,28 +1,22 @@
-# Hướng dẫn review source code
+# Hướng dẫn đọc và trình bày source
 
-Ứng dụng desktop PySide6 cho Chủ đề 4 / Project 1: Scan tài liệu. Repository public phục vụ đọc, chạy và kiểm tra source; đây không phải ứng dụng web chạy trên GitHub Pages.
+Nên đọc theo thứ tự sau:
 
-## Thứ tự đọc
+1. `main.py`: tạo QApplication, mở cửa sổ và bắt đầu vòng lặp giao diện.
+2. `scan_app/window.py`: `set_light_theme` đặt Fusion và màu sáng; các hàm `build_*` dựng từng phần giao diện.
+3. Trong `window.py`, lần theo `apply_transform` → `parameters` → `TransformWorker.run` → `show_result`. Worker chỉ để xử lý ảnh mà không làm đứng cửa sổ.
+4. `processing/resize.py`, `rotate.py`, `perspective.py`: mỗi file là một kỹ thuật. Hàm kiểm tra và metric dùng chung nằm trong `processing/__init__.py`.
+5. `canvas.py`: `mapToScene` đổi vị trí chuột sang pixel ảnh gốc; danh sách `points` giữ tọa độ khi click/kéo. Không còn ô nhập X/Y trên giao diện.
+6. `image_io.py`: đọc byte rồi giải mã ảnh, mã hóa ảnh rồi ghi byte để hỗ trợ đường dẫn tiếng Việt.
 
-1. [README](../README.md): phạm vi, cách chạy, tính năng và giới hạn.
-2. [Nguồn và sửa lỗi](THAY_DOI.md): bảng ánh xạ cell notebook sang module, giải thích từng thay đổi.
-3. Thuật toán production: [Resize](../scan_app/processing/resize.py), [Rotate](../scan_app/processing/rotate.py), [Perspective](../scan_app/processing/perspective.py); [hằng số và hàm dùng chung](../scan_app/processing/__init__.py).
-4. Baseline trích nguyên văn: [Resize/Rotate](../tests/reference/resize_rotate.py), [Perspective](../tests/reference/perspective.py). [Manifest](source_manifest.json) lưu hash notebook và vị trí cell.
-5. [GUI](../scan_app/window.py), [canvas chọn góc](../scan_app/canvas.py), [I/O Unicode](../scan_app/image_io.py), [entry point](../main.py).
-6. [Kiểm thử thuật toán](../tests/test_algorithms.py), [kiểm thử GUI](../tests/test_gui.py), [kết quả kiểm thử](KIEM_THU.md).
-7. [Script dữ liệu mô phỏng](../scripts/generate_demo.py), [góc ground truth](../samples/synthetic/manifest.json), [kết quả định lượng](../samples/synthetic/evaluation.csv).
+## Những chỗ nên giải thích khi demo
 
-PDF đề bài và notebook đầy đủ không nằm trong repo; có phần yêu cầu liên quan được ghi lại và các hàm baseline đã trích. Người review cần các file gốc nếu muốn xác minh độc lập nội dung đề và SHA-256, hoặc đọc các cell khác ngoài phần thuật toán đã trích.
+- Resize giữ tỷ lệ bằng cách lấy chiều vừa sửa làm chuẩn. Khi gọi API với cả Width/Height, ảnh được thu vừa hộp giới hạn.
+- Rotate bật Keep Full sẽ mở rộng canvas và dịch tâm xoay, giúp không mất góc ảnh.
+- Perspective sắp bốn điểm, đo cạnh để tính đầu ra, tạo ma trận bằng `getPerspectiveTransform`, rồi gọi `warpPerspective`.
+- Before luôn là ảnh vừa mở. After là kết quả của lần áp dụng gần nhất; Reset bỏ kết quả và điểm chọn.
+- Chi tiết đánh giá chỉ hiện chỉ số liên quan đến kết quả. Không có xuất JSON hay lịch sử ghép bước trong giao diện hiện tại.
 
-## Các điểm cần đánh giá
+Các kiểm tra điểm trùng, thẳng hàng, ma trận suy biến và giới hạn 24 megapixel được giữ để tránh lỗi thật khi thao tác. Không cần học thuộc mọi chi tiết kiểm thử để giải thích ba kỹ thuật.
 
-- Mức độ giữ đúng thuật toán notebook và tính cần thiết của các thay đổi đã mô tả.
-- Quy ước tọa độ pixel, giữ tỷ lệ, mở canvas xoay, thứ tự góc, tứ giác suy biến và ảnh rất nhỏ.
-- SSIM cửa sổ của Resize so với SSIM global của Perspective; ý nghĩa và giới hạn của reprojection, Laplacian, PSNR.
-- Chọn/kéo góc khi đổi kích thước cửa sổ; vòng đời QThread; ghép bước và tránh lưu nhầm kết quả.
-- Xử lý lỗi khi đọc ảnh/video, kích thước lớn, Unicode và xuất JSON.
-- Chất lượng và phần còn thiếu trong các kiểm thử. 80 kiểm thử đạt là kết quả đã ghi nhận, không bảo đảm code không còn bug.
-
-## Prompt có thể gửi kèm link repo
-
-> Hãy review repository này. Đọc README.md, docs/REVIEW_GUIDE.md và docs/THAY_DOI.md trước, sau đó đọc toàn bộ scan_app/ và tests/. Đối chiếu thuật toán production với hàm gốc trong tests/reference/. Tìm lỗi có thể tái hiện, phân loại mức độ, chỉ rõ file/dòng và cách sửa tối thiểu. Không tự thay thuật toán của nhóm bằng implementation khác nếu chưa chứng minh cần thiết. Kiểm tra cả GUI, metric và các trường hợp biên. Phân biệt kết quả kiểm thử đã có với nhận định chưa được chạy xác minh. Nếu không truy cập được một file, hãy nói rõ file nào thay vì suy đoán nội dung.
+`tests/test_algorithms.py` đối chiếu các phép biến đổi với hàm gốc trong `tests/reference/`. `tests/test_gui.py` kiểm tra thao tác giao diện, màu sáng, kéo điểm và mở/lưu ảnh. Nguồn notebook và ghi chú thay đổi nằm ở [THAY_DOI.md](THAY_DOI.md).

@@ -21,8 +21,13 @@ def resize_image(img, width=None, height=None, scale=None,
             if value is not None:
                 check_size(value, 1)
         if keep_aspect_ratio:
-            ratio = min(v / original for v, original in ((width, w), (height, h))
-                        if v is not None)
+            # Nếu nhập cả hai chiều, lấy tỷ lệ nhỏ hơn để ảnh vừa khung.
+            if width is None:
+                ratio = height / h
+            elif height is None:
+                ratio = width / w
+            else:
+                ratio = min(width / w, height / h)
             new_w, new_h = max(1, int(w * ratio)), max(1, int(h * ratio))
         else:
             new_w, new_h = width, height
@@ -36,7 +41,8 @@ def evaluate_resize(original, resized):
     back = cv2.resize(resized, (w, h), interpolation=cv2.INTER_LINEAR)
     a, b = gray(original), gray(back)
     win = min(7, h, w)
-    win -= 1 - win % 2
+    if win % 2 == 0:
+        win -= 1  # SSIM cần kích thước cửa sổ lẻ.
     score = float(ssim(a, b, data_range=255, win_size=win)) if win >= 3 else None
     return {'MSE': round(mse(a, b), 3), 'PSNR (dB)': round(psnr(a, b), 3),
             'SSIM (cửa sổ)': None if score is None else round(score, 4),
